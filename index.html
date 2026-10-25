@@ -287,7 +287,8 @@
   
       </div>
 
-      <button>Check Risk</button>
+      <button id="submitScan" type="button">Check Risk</button>
+      <p class="hint" id="submissionStatus" role="status" aria-live="polite"></p>
     </div>
 
     <hr class="divider">
@@ -313,7 +314,7 @@
   </div>
 
   <script>
-  
+    /*
        0-34%  -> green (low)
        35-64% -> yellow (medium)
        65-100% -> red (high)
@@ -406,6 +407,47 @@
       });
     });
     dropzone.addEventListener("drop", function (e) { addFiles(e.dataTransfer.files); });
+
+    var submitButton = document.getElementById("submitScan");
+    var submissionStatus = document.getElementById("submissionStatus");
+
+    submitButton.addEventListener("click", async function () {
+      var payload = {
+        emailAddress: document.getElementById("sender").value.trim(),
+        subject: document.getElementById("subject").value.trim(),
+        emailContent: document.getElementById("body").value.trim(),
+        attachedLink: document.getElementById("links").value.trim(),
+        attachedFile: queued.map(function (file) { return file.name; }).join(", "),
+        riskScore: Number(document.getElementById("scoreBadge").textContent.replace("%", ""))
+      };
+
+      if (!payload.emailAddress) {
+        submissionStatus.textContent = "Enter a sender address before submitting.";
+        return;
+      }
+
+      submitButton.disabled = true;
+      submissionStatus.textContent = "Submitting scan...";
+
+      try {
+        var response = await fetch("/api/scans", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        var result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || "The scan could not be saved.");
+        }
+
+        submissionStatus.textContent = result.message + " Scan ID: " + result.scanId;
+      } catch (error) {
+        submissionStatus.textContent = "Submission failed: " + error.message;
+      } finally {
+        submitButton.disabled = false;
+      }
+    });
   </script>
 </body>
 </html>

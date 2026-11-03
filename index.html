@@ -6,10 +6,10 @@
   <title>Phishing Net</title>
   <style>
     :root {
-      --bg: #3a3d42;         
+      --bg: #0d0d0d;         
       --bg2: #52565e;       
-      --accent: #00d4e0;        /* cyan */
-      --accent2: #ff8a2b;       /* orange */
+      --accent: #d4af37;        /* gold */
+      --accent2: #f5d061;       /* gold */
       --card: rgba(255, 255, 255, 0.10);
       --text: #ffffff;
       --muted: #c2c6cc;
@@ -28,24 +28,6 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background: var(--bg);
       color: var(--text);
-    }
-
-    .net-bg {
-      position: fixed;
-      inset: 0;
-      z-index: 0;
-      background-image:
-        linear-gradient(var(--bg2) 1px, transparent 1px),
-        linear-gradient(90deg, var(--bg2) 1px, transparent 1px);
-      background-size: 48px 48px;
-      opacity: 0.8;
-    }
-
-    .net-bg::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(circle at 50% 30%, rgba(0, 212, 224, 0.18), transparent 60%);
     }
 
     .wrap {
@@ -243,7 +225,6 @@
 </head>
 
 <body>
-  <div class="net-bg"></div>
 
   <div class="wrap">
 

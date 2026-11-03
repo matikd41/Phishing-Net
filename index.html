@@ -14,7 +14,7 @@
       --text: #ffffff;
       --muted: #c2c6cc;
 
-      /* risk colors (used only for the risk score) */
+      /* risk colors */
       --risk-low: #3ddc84;      /* green  0-34%   */
       --risk-med: #ffd23f;      /* yellow 35-64%  */
       --risk-high: #ff4d4d;     /* red    65-100% */
@@ -79,7 +79,7 @@
       outline-offset: 1px;
     }
 
-    /* ---------- attachment drop zone ---------- */
+    
     .dropzone {
       border: 2px dashed rgba(0, 212, 224, 0.55);
       border-radius: 12px;
@@ -232,8 +232,8 @@
       <div class="logo">Phishing<span>Net</span></div>
     </header>
 
-    <!-- ===== PAGE 1: Input ===== -->
-    <div class="page-tag">Page 1 — Input</div>
+    
+    
     <div class="card">
 
       <div class="field">
@@ -274,8 +274,8 @@
 
     <hr class="divider">
 
-    <!-- ===== PAGE 2: Results ===== -->
-    <div class="page-tag">Page 2 — Results</div>
+    
+    
     <div class="card" id="results" data-risk="high">
       <div class="score-row">
         <div class="score-badge" id="scoreBadge">98%</div>
@@ -299,7 +299,7 @@
        0-34%  -> green (low)
        35-64% -> yellow (medium)
        65-100% -> red (high)
-       Call setRisk(score) with the score from your checker. */
+      */
     function riskLevel(p) {
       if (p <= 34) return "low";
       if (p <= 64) return "medium";

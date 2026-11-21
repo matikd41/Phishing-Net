@@ -393,29 +393,25 @@
     var submissionStatus = document.getElementById("submissionStatus");
 
     submitButton.addEventListener("click", async function () {
-      var payload = {
-        emailAddress: document.getElementById("sender").value.trim(),
-        subject: document.getElementById("subject").value.trim(),
-        emailContent: document.getElementById("body").value.trim(),
-        attachedLink: document.getElementById("links").value.trim(),
-        attachedFile: queued.map(function (file) { return file.name; }).join(", "),
-        riskScore: Number(document.getElementById("scoreBadge").textContent.replace("%", ""))
-      };
+      var sender = document.getElementById("sender").value.trim();
 
-      if (!payload.emailAddress) {
+      if (!sender) {
         submissionStatus.textContent = "Enter a sender address before submitting.";
         return;
       }
+
+      var form = new FormData();
+      form.append("emailAddress", sender);
+      form.append("subject", document.getElementById("subject").value.trim());
+      form.append("emailContent", document.getElementById("body").value.trim());
+      form.append("attachedLink", document.getElementById("links").value.trim());
+      queued.forEach(function (file) { form.append("files", file); });
 
       submitButton.disabled = true;
       submissionStatus.textContent = "Submitting scan...";
 
       try {
-        var response = await fetch("/api/scans", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
+        var response = await fetch("/api/scans", { method: "POST", body: form });
         var result = await response.json();
 
         if (!response.ok) {

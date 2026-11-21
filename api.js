@@ -1,20 +1,22 @@
 const express = require('express');
 const mysql = require('mysql2/promise');
 const path = require('path');
+const virusTotalRouter = require('./Sandbox/VirusTotal/router');
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
+app.use('/api/virustotal', virusTotalRouter);
 
 // Connect to MariaDB
 const pool = mysql.createPool({
-  host: 'localhost',
-  user: 'root',
-  password: 'bePreV4t#oc7', 
-  database: 'phishing_net',
-  port: 3306
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME || 'phishing_net',
+  port: Number(process.env.DB_PORT) || 3306
 });
 
 // POST endpoint

@@ -1,0 +1,26 @@
+CREATE DATABASE IF NOT EXISTS phishing_net;
+
+USE phishing_net;
+
+CREATE TABLE IF NOT EXISTS user_accounts (
+  AccountId INT AUTO_INCREMENT PRIMARY KEY,
+  Email VARCHAR(255) NOT NULL UNIQUE,
+  FirstName VARCHAR(100) NOT NULL,
+  LastName VARCHAR(100) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS scan_log (
+  Id INT AUTO_INCREMENT PRIMARY KEY,
+  AccountId INT NULL,
+  EmailAddress VARCHAR(255) NOT NULL,
+  Subject TEXT NULL,
+  EmailContent TEXT NULL,
+  AttachedLink TEXT NULL,
+  AttachedFile TEXT NULL,
+  RiskScore DECIMAL(5,2) NULL,
+  ExecutedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_scan_log_account
+    FOREIGN KEY (AccountId)
+    REFERENCES user_accounts (AccountId)
+    ON DELETE SET NULL
+);

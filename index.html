@@ -261,6 +261,52 @@
       border-top: 1px dashed rgba(255, 255, 255, 0.25);
       margin: 56px 0;
     }
+
+    .page-section[hidden] { display: none; }
+
+    .page-actions {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .page-actions button { margin-top: 0; }
+
+    .account-picker {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 10px;
+      color: var(--text);
+      padding: 12px 14px;
+    }
+
+    .account-picker option { color: #111; }
+
+    .current-account {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .history-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+    .history-table th,
+    .history-table td {
+      padding: 10px 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+      text-align: left;
+      vertical-align: top;
+      overflow-wrap: anywhere;
+    }
+    .history-table th { color: var(--accent2); }
+    .history-empty { color: var(--muted); text-align: center; }
   </style>
 </head>
 
@@ -273,8 +319,43 @@
       <a class="page-link" href="/Sandbox/VirusTotal/test.html">Open side-by-side testing page</a>
     </header>
 
-    
-    
+    <section class="page-section" id="accountPage">
+      <div class="card">
+        <div class="page-tag">Account</div>
+
+        <div class="field">
+          <label for="accountSelect">Select an existing account</label>
+          <select class="account-picker" id="accountSelect">
+            <option value="">Choose an account</option>
+          </select>
+          <button class="secondary" id="selectAccount" type="button">Continue to Scan</button>
+          <p class="hint" id="accountStatus" role="status" aria-live="polite"></p>
+        </div>
+
+        <hr class="divider">
+
+        <div class="field">
+          <label for="accountEmail">New account email</label>
+          <input type="email" id="accountEmail" placeholder="name@example.com" autocomplete="email">
+        </div>
+        <div class="field">
+          <label for="accountFirstName">First name</label>
+          <input type="text" id="accountFirstName" autocomplete="given-name">
+        </div>
+        <div class="field">
+          <label for="accountLastName">Last name</label>
+          <input type="text" id="accountLastName" autocomplete="family-name">
+        </div>
+        <button id="createAccount" type="button">Add Account</button>
+      </div>
+    </section>
+
+    <section class="page-section" id="scanPage" hidden>
+      <div class="current-account">
+        <span id="currentAccountLabel"></span>
+        <button class="secondary" id="viewHistory" type="button" style="width:auto;margin:0;padding:8px 12px;">View My Scans</button>
+      </div>
+
     <div class="card">
 
       <div class="field">
@@ -344,10 +425,158 @@
       <p class="hint">This is a simple demo estimate based on visible indicators, not a trained model prediction.</p>
       <button class="secondary" id="resetScan" type="button">Check Another Message</button>
     </div>
+    </section>
 
+    <section class="page-section" id="historyPage" hidden>
+      <div class="card">
+        <div class="page-tag">My Scan History</div>
+        <div class="page-actions">
+          <button class="secondary" id="historyBack" type="button">Back to Scan</button>
+          <button class="secondary" id="historySwitchAccount" type="button">Switch Account</button>
+        </div>
+        <p class="hint" id="historyStatus" role="status" aria-live="polite"></p>
+        <div id="historyContent"></div>
+      </div>
+    </section>
   </div>
 
   <script>
+    var accountPage = document.getElementById("accountPage");
+    var scanPage = document.getElementById("scanPage");
+    var historyPage = document.getElementById("historyPage");
+    var accountSelect = document.getElementById("accountSelect");
+    var accountStatus = document.getElementById("accountStatus");
+    var currentAccount = null;
+    var accountRecords = [];
+
+    function showPage(page) {
+      accountPage.hidden = page !== "account";
+      scanPage.hidden = page !== "scan";
+      historyPage.hidden = page !== "history";
+    }
+
+    function selectAccount(account) {
+      currentAccount = account;
+      sessionStorage.setItem("phishingNetAccount", JSON.stringify(account));
+      document.getElementById("currentAccountLabel").textContent =
+        "Logged in as " + account.FirstName + " " + account.LastName + " (" + account.Email + ")";
+      showPage("scan");
+    }
+
+    async function loadAccounts() {
+      accountStatus.textContent = "Loading accounts...";
+      var response = await fetch("/api/accounts");
+      var accounts = await readApiResponse(response);
+      accountRecords = accounts;
+      accountSelect.textContent = "";
+      var placeholder = document.createElement("option");
+      placeholder.value = "";
+      placeholder.textContent = "Choose an account";
+      accountSelect.appendChild(placeholder);
+      accounts.forEach(function (account) {
+        var option = document.createElement("option");
+        option.value = account.AccountId;
+        option.textContent = account.FirstName + " " + account.LastName + " (" + account.Email + ")";
+        accountSelect.appendChild(option);
+      });
+      accountStatus.textContent = accounts.length ? "" : "No accounts exist yet. Add one below.";
+    }
+
+    document.getElementById("selectAccount").addEventListener("click", function () {
+      var accountId = Number(accountSelect.value);
+      if (!accountId) {
+        accountStatus.textContent = "Select an account first.";
+        return;
+      }
+      var selected = accountRecords.find(function (account) {
+        return account.AccountId === accountId;
+      });
+      if (selected) selectAccount(selected);
+    });
+
+    document.getElementById("createAccount").addEventListener("click", async function () {
+      var payload = {
+        email: document.getElementById("accountEmail").value,
+        firstName: document.getElementById("accountFirstName").value,
+        lastName: document.getElementById("accountLastName").value
+      };
+      accountStatus.textContent = "Saving account...";
+      try {
+        var response = await fetch("/api/accounts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        var result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Could not create account.");
+        selectAccount({
+          AccountId: result.accountId,
+          Email: payload.email.trim(),
+          FirstName: payload.firstName.trim(),
+          LastName: payload.lastName.trim()
+        });
+      } catch (error) {
+        accountStatus.textContent = error.message;
+      }
+    });
+
+    async function loadHistory() {
+      if (!currentAccount) return;
+      showPage("history");
+      var historyStatus = document.getElementById("historyStatus");
+      var historyContent = document.getElementById("historyContent");
+      historyStatus.textContent = "Loading scans...";
+      historyContent.textContent = "";
+      try {
+        var response = await fetch("/api/accounts/" + currentAccount.AccountId + "/scans");
+        var scans = await readApiResponse(response);
+        if (!scans.length) {
+          historyStatus.textContent = "No scans have been performed for this account.";
+          return;
+        }
+        historyStatus.textContent = scans.length + " scan(s) found.";
+        var table = document.createElement("table");
+        table.className = "history-table";
+        table.innerHTML =
+          "<thead><tr><th>Date / Time</th><th>Sender</th><th>Subject</th><th>Risk</th><th>Link</th><th>Attachment</th></tr></thead>";
+        var tbody = document.createElement("tbody");
+        scans.forEach(function (scan) {
+          var row = document.createElement("tr");
+          var executed = new Date(scan.ExecutedAt);
+          var dateText = isNaN(executed.getTime())
+            ? String(scan.ExecutedAt || "")
+            : executed.toLocaleString();
+          var values = [
+            dateText,
+            scan.EmailAddress,
+            scan.Subject || "",
+            scan.RiskScore == null ? "" : Number(scan.RiskScore).toFixed(0) + "%",
+            scan.AttachedLink || "",
+            scan.AttachedFile || ""
+          ];
+          values.forEach(function (value) {
+            var cell = document.createElement("td");
+            cell.textContent = value;
+            row.appendChild(cell);
+          });
+          tbody.appendChild(row);
+        });
+        table.appendChild(tbody);
+        historyContent.appendChild(table);
+      } catch (error) {
+        historyStatus.textContent = error.message;
+      }
+    }
+
+    document.getElementById("viewHistory").addEventListener("click", loadHistory);
+    document.getElementById("historyBack").addEventListener("click", function () { showPage("scan"); });
+    document.getElementById("historySwitchAccount").addEventListener("click", function () {
+      sessionStorage.removeItem("phishingNetAccount");
+      currentAccount = null;
+      showPage("account");
+      loadAccounts();
+    });
+
     /*
        0-34%  -> green (low)
        35-64% -> yellow (medium)
@@ -619,8 +848,14 @@
     });
 
     submitButton.addEventListener("click", async function () {
+      if (!currentAccount) {
+        submissionStatus.textContent = "Select or add an account before checking a scan.";
+        showPage("account");
+        return;
+      }
       var riskScore = checkMessage();
       var payload = {
+        accountId: currentAccount.AccountId,
         emailAddress: document.getElementById("sender").value.trim(),
         subject: document.getElementById("subject").value.trim(),
         emailContent: document.getElementById("body").value.trim(),
@@ -706,6 +941,20 @@
         if (!filesToScan.length) setScanProgress("", false);
       }
     });
+
+    loadAccounts().catch(function (error) {
+      accountStatus.textContent = error.message;
+    });
+
+    var savedAccount = sessionStorage.getItem("phishingNetAccount");
+    if (savedAccount) {
+      try {
+        var restoredAccount = JSON.parse(savedAccount);
+        if (restoredAccount && restoredAccount.AccountId) selectAccount(restoredAccount);
+      } catch (_) {
+        sessionStorage.removeItem("phishingNetAccount");
+      }
+    }
   </script>
 </body>
 </html>
